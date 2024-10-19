@@ -84,37 +84,47 @@ I also use global *marks* defined in *keymap.toml* to navigate quickly to
 frequent directories, like this:
 
 ``` toml
-...
+[namager]
+prepend_keymap = [
     { on = [ "'", "<Space>" ], run = "cd --interactive",   desc = "Go to a directory interactively" },
     { on = [ "'", "h" ],       run = "cd ~",   desc = "Go to the home directory" },
     { on = [ "'", "c" ],       run = "cd ~/.config",   desc = "Go to the config directory" },
     { on = [ "'", "d" ],       run = "cd ~/Downloads",   desc = "Go to the Downloads directory" },
     { on = [ "'", "D" ],       run = "cd ~/Documents",   desc = "Go to the Documents directory" },
-...
+]
 ```
 
 backward and forward keys like in vim:
 
 ``` toml
+[namager]
+prepend_keymap = [
     # Backward/Forward
     { on = "<C-o>", run = "back",    desc = "Go back to the previous directory" },
-	{ on = "<C-i>", run = "forward", desc = "Go forward to the next directory" },
+    { on = "<C-i>", run = "forward", desc = "Go forward to the next directory" },
+]
 ```
 
 [fuse-archive.yazi](https://github.com/dawsers/fuse-archive.yazi)
 
 ``` toml
+[namager]
+prepend_keymap = [
     # fuse-archive
     { on   = [ "<Right>" ], run = "plugin fuse-archive --args=mount", desc = "Mount selected archive" },
     { on   = [ "<Left>" ], run = "plugin fuse-archive --args=unmount", desc = "Unmount selected archive" },
+]
 ```
 
 and [toggle-view.yazi](https://github.com/dawsers/toggle-view.yazi)
 
 ``` toml
+[namager]
+prepend_keymap = [
     { on = "<C-1>", run = "plugin --sync toggle-view --args=parent", desc = "Toggle parent" },
     { on = "<C-2>", run = "plugin --sync toggle-view --args=current", desc = "Toggle current" },
     { on = "<C-3>", run = "plugin --sync toggle-view --args=preview", desc = "Toggle preview" },
+]
 ```
 
 There may be some incompatibilities between *dual-pane* and certain plugins or
