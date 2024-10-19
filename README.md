@@ -17,7 +17,7 @@ ya pack -a dawsers/dual-pane
 Modify your `~/.config/yazi/init.lua` to include:
 
 ``` lua
-require("dial-pane"):setup()
+require("dual-pane"):setup()
 ```
 
 ## Usage
