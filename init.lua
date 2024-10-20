@@ -33,7 +33,7 @@ end
 setmetatable(Pane, { __index = Root })
 
 local DualPane = {
-  active = nil,
+  pane = nil,
   left = 0,
   right = 0,
   view = nil,    -- 0 = dual, 1 = current zoomed 
@@ -45,7 +45,7 @@ local DualPane = {
   old_header_tabs = nil,
 
   _create = function(self)
-    self.active = 0
+    self.pane = 0
     if #cx.tabs > 1 then
       self.right = 1
     end
@@ -69,7 +69,7 @@ local DualPane = {
     	end
 
     	local s = ya.readable_path(tostring(header._tab.current.cwd)) .. header:flags()
-      if header.pane == self.active then
+      if header.pane == self.pane then
       	return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_active)
       else
       	return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_inactive)
@@ -169,15 +169,13 @@ local DualPane = {
 
     Root.build = function(root)
       local tab_idx, pane_idx
-      if self.active == 0 then
-        pane_idx = 0
+      if self.pane == 0 then
         tab_idx = self.left + 1
       else
-        pane_idx = 1
         tab_idx = self.right + 1
       end
       root._children = {
-        Pane:new(root._chunks[1], cx.tabs[tab_idx], pane_idx),
+        Pane:new(root._chunks[1], cx.tabs[tab_idx], self.pane),
       }
     end
   end,
@@ -207,10 +205,10 @@ local DualPane = {
   end,
 
   focus_next = function(self)
-    if self.active then
-      self.active = (self.active + 1) % 2
+    if self.pane then
+      self.pane = (self.pane + 1) % 2
       local tab
-      if self.active == 0 then
+      if self.pane == 0 then
         tab = self.left
       else
         tab = self.right
@@ -224,7 +222,7 @@ local DualPane = {
   copy_files = function(self, cut, force, follow)
     if self.view then
       local src_tab, dst_tab
-      if self.active == 0 then
+      if self.pane == 0 then
         src_tab = self.left
         dst_tab = self.right
       else
@@ -250,8 +248,8 @@ local DualPane = {
   end,
 
   tab_switch = function(self, tab_number)
-    if self.active then
-      if self.active == 0 then
+    if self.pane then
+      if self.pane == 0 then
         self.left = tab_number
       else
         self.right = tab_number
@@ -317,8 +315,8 @@ local function entry(_, args)
       local tab =  tonumber(args[2])
       if args[3] then
         if args[3] == "--relative" then
-          if DualPane.active then
-            if DualPane.active == 0 then
+          if DualPane.pane then
+            if DualPane.pane == 0 then
               tab = (DualPane.left + tab) % #cx.tabs
             else
               tab = (DualPane.right + tab) % #cx.tabs
@@ -347,7 +345,7 @@ local function entry(_, args)
     end
     -- The new tab is cx.tabs.idx + 1, so we need to correct the non-active
     -- pane if its tab number is higher than the one in the non-active
-    if DualPane.active == 0 then
+    if DualPane.pane == 0 then
       if DualPane.right > DualPane.left then
         DualPane.right = DualPane.right + 1
       end

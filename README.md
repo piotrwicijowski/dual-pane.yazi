@@ -35,8 +35,8 @@ prepend_keymap = [
     { on = "[", run = "plugin --sync dual-pane --args='tab_switch -1 --relative'",  desc = "Dual-pane: switch active to previous tab" },
     { on = "]", run = "plugin --sync dual-pane --args='tab_switch 1 --relative'",  desc = "Dual-pane: switch active to next tab" },
     { on = "t", run = "plugin --sync dual-pane --args='tab_create --current'",  desc = "Dual-pane: create a new tab with CWD" },
-    { on = "<F5>", run = "plugin --sync dual-pane --args='copy_files --force --follow'",  desc = "Dual-pane: copy selected files from active to inactive pane" },
-    { on = "<F6>", run = "plugin --sync dual-pane --args='move_files --force --follow'",  desc = "Dual-pane: move selected files from active to inactive pane" },
+    { on = "<F5>", run = "plugin --sync dual-pane --args='copy_files --follow'",  desc = "Dual-pane: copy selected files from active to inactive pane" },
+    { on = "<F6>", run = "plugin --sync dual-pane --args='move_files --follow'",  desc = "Dual-pane: move selected files from active to inactive pane" },
 ]
 ```
 
