@@ -15,7 +15,6 @@ function Pane:layout()
 		:constraints({
 			ui.Constraint.Length(1),
 			ui.Constraint.Fill(1),
-			ui.Constraint.Length(1),
 		})
 		:split(self._area)
 end
@@ -26,11 +25,49 @@ function Pane:build(tab, pane)
 	self._children = {
 		header,
 		Tab:new(self._chunks[2], tab),
-		Status:new(self._chunks[3], tab),
 	}
 end
 
 setmetatable(Pane, { __index = Root })
+
+local Panes = {
+  _id = "panes"
+}
+
+function Panes:new(area, tab_left, tab_right)
+  local me = setmetatable({ _area = area }, { __index = self })
+  me:layout()
+  me:build(tab_left, tab_right)
+  return me
+end
+
+function Panes:layout()
+  self._chunks = ui.Layout()
+    :direction(ui.Layout.VERTICAL)
+    :constraints({
+      ui.Constraint.Fill(1),
+      ui.Constraint.Length(1),
+    })
+    :split(self._area)
+
+  self._panes_chunks = ui.Layout()
+    :direction(ui.Layout.HORIZONTAL)
+    :constraints({
+      ui.Constraint.Percentage(50),
+      ui.Constraint.Percentage(50),
+    })
+    :split(self._chunks[1])
+end
+
+function Panes:build(tab_left, tab_right)
+  self._children = {
+    Pane:new(self._panes_chunks[1], tab_left, 0),
+    Pane:new(self._panes_chunks[2], tab_right, 1),
+    Status:new(self._chunks[2], cx.active),
+  }
+end
+
+setmetatable(Panes, { __index = Root })
 
 local DualPane = {
   pane = nil,
@@ -51,15 +88,8 @@ local DualPane = {
     end
 
     self.old_root_layout = Root.layout
-    Root.layout = function(root)
-      root._chunks = ui.Layout()
-        :direction(ui.Layout.HORIZONTAL)
-        :constraints({
-          ui.Constraint.Percentage(50),
-          ui.Constraint.Percentage(50),
-        })
-        :split(root._area)
-    end
+    self.old_root_build = Root.build
+    self._config_dual_pane(self)
 
     self.old_header_cwd = Header.cwd
     Header.cwd = function(header)
@@ -104,14 +134,6 @@ local DualPane = {
       return ui.Line(spans)
     end
 
-    self.old_root_build = Root.build
-    Root.build = function(root)
-      root._children = {
-        Pane:new(root._chunks[1], cx.tabs[self.left + 1], 0),
-        Pane:new(root._chunks[2], cx.tabs[self.right + 1], 1),
-      }
-    end
-
     self.old_tab_layout = Tab.layout
     Tab.layout = function(self)
       self._chunks = ui.Layout()
@@ -143,16 +165,14 @@ local DualPane = {
       root._chunks = ui.Layout()
         :direction(ui.Layout.HORIZONTAL)
         :constraints({
-          ui.Constraint.Percentage(50),
-          ui.Constraint.Percentage(50),
+          ui.Constraint.Percentage(100),
         })
         :split(root._area)
     end
 
     Root.build = function(root)
       root._children = {
-        Pane:new(root._chunks[1], cx.tabs[self.left + 1], 0),
-        Pane:new(root._chunks[2], cx.tabs[self.right + 1], 1),
+        Panes:new(root._chunks[1], cx.tabs[self.left + 1], cx.tabs[self.right + 1]),
       }
     end
   end,
@@ -160,22 +180,24 @@ local DualPane = {
   _config_single_pane = function(self)
     Root.layout = function(root)
       root._chunks = ui.Layout()
-        :direction(ui.Layout.HORIZONTAL)
+        :direction(ui.Layout.VERTICAL)
         :constraints({
-          ui.Constraint.Percentage(100),
+			    ui.Constraint.Fill(1),
+    			ui.Constraint.Length(1),
         })
         :split(root._area)
     end
 
     Root.build = function(root)
-      local tab_idx, pane_idx
+      local tab
       if self.pane == 0 then
-        tab_idx = self.left + 1
+        tab = cx.tabs[self.left + 1]
       else
-        tab_idx = self.right + 1
+        tab = cx.tabs[self.right + 1]
       end
       root._children = {
-        Pane:new(root._chunks[1], cx.tabs[tab_idx], self.pane),
+        Pane:new(root._chunks[1], tab, self.pane),
+		    Status:new(root._chunks[2], tab),
       }
     end
   end,
