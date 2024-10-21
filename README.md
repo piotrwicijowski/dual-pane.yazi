@@ -20,6 +20,18 @@ Modify your `~/.config/yazi/init.lua` to include:
 require("dual-pane"):setup()
 ```
 
+## Options
+
+The plugin supports the following options, which can be assigned during setup:
+
+1. `enabled`: If true, the plugin is enabled at yazi's startup. The default value is false.
+
+``` lua
+require("dual-pane"):setup({
+  enabled = true,
+})
+``````
+
 ## Usage
 
 The plugin needs to overwrite several key bindings to work well.

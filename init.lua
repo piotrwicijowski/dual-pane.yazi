@@ -71,8 +71,8 @@ setmetatable(Panes, { __index = Root })
 
 local DualPane = {
   pane = nil,
-  left = 0,
-  right = 0,
+  left = nil,
+  right = nil,
   view = nil,    -- 0 = dual, 1 = current zoomed 
 
   old_root_layout = nil,
@@ -83,8 +83,16 @@ local DualPane = {
 
   _create = function(self)
     self.pane = 0
-    if #cx.tabs > 1 then
-      self.right = 1
+    if cx then
+      self.left = cx.tabs.idx - 1
+      if #cx.tabs > 1 then
+        self.right = (self.left + 1) % #cx.tabs
+      else
+        self.right = self.left
+      end
+    else
+      self.left = 0
+      self.right = 0
     end
 
     self.old_root_layout = Root.layout
@@ -387,6 +395,9 @@ local function entry(_, args)
 end
 
 local function setup(_, opts)
+  if opts and opts.enabled then
+    DualPane:toggle()
+  end
 end
 
 return {
