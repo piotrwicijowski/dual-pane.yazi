@@ -1,31 +1,31 @@
 local Pane = {
-	_id = "pane",
+  _id = "pane",
 }
 
 function Pane:new(area, tab, pane)
-	local me = setmetatable({ _area = area }, { __index = self })
-	me:layout()
-	me:build(tab, pane)
-	return me
+  local me = setmetatable({ _area = area }, { __index = self })
+  me:layout()
+  me:build(tab, pane)
+  return me
 end
 
 function Pane:layout()
-	self._chunks = ui.Layout()
-		:direction(ui.Layout.VERTICAL)
-		:constraints({
-			ui.Constraint.Length(1),
-			ui.Constraint.Fill(1),
-		})
-		:split(self._area)
+  self._chunks = ui.Layout()
+    :direction(ui.Layout.VERTICAL)
+    :constraints({
+      ui.Constraint.Length(1),
+      ui.Constraint.Fill(1),
+    })
+    :split(self._area)
 end
 
 function Pane:build(tab, pane)
   local header = Header:new(self._chunks[1], tab)
   header.pane = pane
-	self._children = {
-		header,
-		Tab:new(self._chunks[2], tab),
-	}
+  self._children = {
+    header,
+    Tab:new(self._chunks[2], tab),
+  }
 end
 
 setmetatable(Pane, { __index = Root })
@@ -73,7 +73,7 @@ local DualPane = {
   pane = nil,
   left = nil,
   right = nil,
-  view = nil,    -- 0 = dual, 1 = current zoomed 
+  view = nil, -- 0 = dual, 1 = current zoomed
 
   old_root_layout = nil,
   old_root_build = nil,
@@ -101,16 +101,16 @@ local DualPane = {
 
     self.old_header_cwd = Header.cwd
     Header.cwd = function(header)
-    	local max = header._area.w - header._right_width
-    	if max <= 0 then
-		    return ui.Span("")
-    	end
+      local max = header._area.w - header._right_width
+      if max <= 0 then
+        return ui.Span("")
+      end
 
-    	local s = ya.readable_path(tostring(header._tab.current.cwd)) .. header:flags()
+      local s = ya.readable_path(tostring(header._tab.current.cwd)) .. header:flags()
       if header.pane == self.pane then
-      	return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_active)
+        return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_active)
       else
-      	return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_inactive)
+        return ui.Span(ya.truncate(s, { max = max, rtl = true })):style(THEME.manager.tab_inactive)
       end
     end
 
@@ -190,8 +190,8 @@ local DualPane = {
       root._chunks = ui.Layout()
         :direction(ui.Layout.VERTICAL)
         :constraints({
-			    ui.Constraint.Fill(1),
-    			ui.Constraint.Length(1),
+          ui.Constraint.Fill(1),
+          ui.Constraint.Length(1),
         })
         :split(root._area)
     end
@@ -205,7 +205,7 @@ local DualPane = {
       end
       root._children = {
         Pane:new(root._chunks[1], tab, self.pane),
-		    Status:new(root._chunks[2], tab),
+        Status:new(root._chunks[2], tab),
       }
     end
   end,
@@ -342,7 +342,7 @@ local function entry(_, args)
 
   if action == "tab_switch" then
     if args[2] then
-      local tab =  tonumber(args[2])
+      local tab = tonumber(args[2])
       if args[3] then
         if args[3] == "--relative" then
           if DualPane.pane then
