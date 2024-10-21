@@ -61,8 +61,8 @@ end
 
 function Panes:build(tab_left, tab_right)
   self._children = {
-    Pane:new(self._panes_chunks[1], tab_left, 0),
-    Pane:new(self._panes_chunks[2], tab_right, 1),
+    Pane:new(self._panes_chunks[1], tab_left, 1),
+    Pane:new(self._panes_chunks[2], tab_right, 2),
     Status:new(self._chunks[2], cx.active),
   }
 end
@@ -71,8 +71,7 @@ setmetatable(Panes, { __index = Root })
 
 local DualPane = {
   pane = nil,
-  left = nil,
-  right = nil,
+  tabs = {},
   view = nil, -- 0 = dual, 1 = current zoomed
 
   old_root_layout = nil,
@@ -82,17 +81,17 @@ local DualPane = {
   old_header_tabs = nil,
 
   _create = function(self)
-    self.pane = 0
+    self.pane = 1
     if cx then
-      self.left = cx.active.idx
+      self.tabs[1] = cx.active.idx
       if #cx.tabs > 1 then
-        self.right = cx.tabs[cx.tabs.idx % #cx.tabs + 1].idx
+        self.tabs[2] = cx.tabs[cx.tabs.idx % #cx.tabs + 1].idx
       else
-        self.right = self.left
+        self.tabs[2] = self.tabs[1]
       end
     else
-      self.left = 1
-      self.right = 1
+      self.tabs[1] = 1
+      self.tabs[2] = 1
     end
 
     self.old_root_layout = Root.layout
@@ -121,12 +120,7 @@ local DualPane = {
         return ui.Line {}
       end
 
-      local active
-      if header.pane == 0 then
-        active = self.left
-      else
-        active = self.right
-      end
+      local active = self.tabs[header.pane]
       local spans = {}
       for i = 1, tabs do
         local text = i
@@ -180,7 +174,7 @@ local DualPane = {
 
     Root.build = function(root)
       root._children = {
-        Panes:new(root._chunks[1], cx.tabs[self.left], cx.tabs[self.right]),
+        Panes:new(root._chunks[1], cx.tabs[self.tabs[1]], cx.tabs[self.tabs[2]]),
       }
     end
   end,
@@ -197,12 +191,7 @@ local DualPane = {
     end
 
     Root.build = function(root)
-      local tab
-      if self.pane == 0 then
-        tab = cx.tabs[self.left]
-      else
-        tab = cx.tabs[self.right]
-      end
+      local tab = cx.tabs[self.tabs[self.pane]]
       root._children = {
         Pane:new(root._chunks[1], tab, self.pane),
         Status:new(root._chunks[2], tab),
@@ -236,13 +225,8 @@ local DualPane = {
 
   focus_next = function(self)
     if self.pane then
-      self.pane = (self.pane + 1) % 2
-      local tab
-      if self.pane == 0 then
-        tab = self.left
-      else
-        tab = self.right
-      end
+      self.pane = self.pane % 2 + 1
+      local tab = self.tabs[self.pane]
       ya.manager_emit("tab_switch", { tab - 1 })
     end
   end,
@@ -251,14 +235,8 @@ local DualPane = {
   -- destination directory
   copy_files = function(self, cut, force, follow)
     if self.view then
-      local src_tab, dst_tab
-      if self.pane == 0 then
-        src_tab = self.left
-        dst_tab = self.right
-      else
-        src_tab = self.right
-        dst_tab = self.left
-      end
+      local src_tab = self.tabs[self.pane]
+      local dst_tab = self.tabs[self.pane % 2 + 1]
       -- yank selected
       if cut then
         ya.manager_emit("yank", { cut = true })
@@ -279,11 +257,7 @@ local DualPane = {
 
   tab_switch = function(self, tab_number)
     if self.pane then
-      if self.pane == 0 then
-        self.left = tab_number
-      else
-        self.right = tab_number
-      end
+      self.tabs[self.pane] = tab_number
     end
     ya.manager_emit("tab_switch", { tab_number - 1 })
   end,
@@ -346,11 +320,7 @@ local function entry(_, args)
       if args[3] then
         if args[3] == "--relative" then
           if DualPane.pane then
-            if DualPane.pane == 0 then
-              tab = (DualPane.left - 1 + tab) % #cx.tabs
-            else
-              tab = (DualPane.right - 1 + tab) % #cx.tabs
-            end
+            tab = (DualPane.tabs[DualPane.pane] - 1 + tab) % #cx.tabs
           else
             tab = (cx.tabs.idx - 1 + tab) % #cx.tabs
           end
