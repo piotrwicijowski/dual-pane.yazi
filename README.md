@@ -6,7 +6,7 @@ fashion to [vifm](https://github.com/vifm/vifm) or [midnight commander](https://
 
 ## Requirements
 
-[yazi](https://github.com/sxyazi/yazi) v0.3.
+- [Yazi nightly build](https://github.com/sxyazi/yazi/releases/tag/nightly) is required ATM.
 
 ## Installation
 
