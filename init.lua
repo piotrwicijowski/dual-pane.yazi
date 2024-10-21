@@ -84,15 +84,15 @@ local DualPane = {
   _create = function(self)
     self.pane = 0
     if cx then
-      self.left = cx.tabs.idx - 1
+      self.left = cx.active.idx
       if #cx.tabs > 1 then
-        self.right = (self.left + 1) % #cx.tabs
+        self.right = cx.tabs[cx.tabs.idx % #cx.tabs + 1].idx
       else
         self.right = self.left
       end
     else
-      self.left = 0
-      self.right = 0
+      self.left = 1
+      self.right = 1
     end
 
     self.old_root_layout = Root.layout
@@ -123,9 +123,9 @@ local DualPane = {
 
       local active
       if header.pane == 0 then
-        active = self.left + 1
+        active = self.left
       else
-        active = self.right + 1
+        active = self.right
       end
       local spans = {}
       for i = 1, tabs do
@@ -180,7 +180,7 @@ local DualPane = {
 
     Root.build = function(root)
       root._children = {
-        Panes:new(root._chunks[1], cx.tabs[self.left + 1], cx.tabs[self.right + 1]),
+        Panes:new(root._chunks[1], cx.tabs[self.left], cx.tabs[self.right]),
       }
     end
   end,
@@ -199,9 +199,9 @@ local DualPane = {
     Root.build = function(root)
       local tab
       if self.pane == 0 then
-        tab = cx.tabs[self.left + 1]
+        tab = cx.tabs[self.left]
       else
-        tab = cx.tabs[self.right + 1]
+        tab = cx.tabs[self.right]
       end
       root._children = {
         Pane:new(root._chunks[1], tab, self.pane),
@@ -243,7 +243,7 @@ local DualPane = {
       else
         tab = self.right
       end
-      ya.manager_emit("tab_switch", { tab })
+      ya.manager_emit("tab_switch", { tab - 1 })
     end
   end,
 
@@ -266,13 +266,13 @@ local DualPane = {
         ya.manager_emit("yank", {})
       end
       -- select dst tab
-      ya.manager_emit("tab_switch", { dst_tab })
+      ya.manager_emit("tab_switch", { dst_tab - 1 })
       -- paste
       ya.manager_emit("paste", { force = force, follow = follow })
       -- unyank
       ya.manager_emit("unyank", {})
       -- select src tab again
-      ya.manager_emit("tab_switch", { src_tab })
+      ya.manager_emit("tab_switch", { src_tab - 1 })
       ya.app_emit("resize", {})
     end
   end,
@@ -285,7 +285,7 @@ local DualPane = {
         self.right = tab_number
       end
     end
-    ya.manager_emit("tab_switch", { tab_number })
+    ya.manager_emit("tab_switch", { tab_number - 1 })
   end,
 }
 
@@ -347,16 +347,16 @@ local function entry(_, args)
         if args[3] == "--relative" then
           if DualPane.pane then
             if DualPane.pane == 0 then
-              tab = (DualPane.left + tab) % #cx.tabs
+              tab = (DualPane.left - 1 + tab) % #cx.tabs
             else
-              tab = (DualPane.right + tab) % #cx.tabs
+              tab = (DualPane.right - 1 + tab) % #cx.tabs
             end
           else
             tab = (cx.tabs.idx - 1 + tab) % #cx.tabs
           end
         end
       end
-      DualPane:tab_switch(tab)
+      DualPane:tab_switch(tab + 1)
     end
     return
   end
@@ -373,20 +373,7 @@ local function entry(_, args)
     else
       ya.manager_emit("tab_create", {})
     end
-    -- The new tab is cx.tabs.idx + 1, so we need to correct the non-active
-    -- pane if its tab number is higher than the one in the non-active
-    if DualPane.pane == 0 then
-      if DualPane.right > DualPane.left then
-        DualPane.right = DualPane.right + 1
-      end
-    else
-      if DualPane.left > DualPane.right then
-        DualPane.left = DualPane.left + 1
-      end
-    end
-    -- The new tab number is `cx.tabs.idx + 1`, but left and right are zero
-    -- based, so substract 1
-    DualPane:tab_switch(cx.tabs.idx)
+    DualPane:tab_switch(cx.tabs.idx + 1)
     -- At this point, the new tab may have not been created yet, as
     -- ya.manager_emit() is not synchronous. So we have the "other" pane
     -- in a limbo state until we switch to it manually (ordering doesn't
