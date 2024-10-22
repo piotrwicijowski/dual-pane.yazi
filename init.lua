@@ -162,6 +162,17 @@ local DualPane = {
     self.old_header_tabs = nil
   end,
 
+  -- This function tests all the tabs in self.tabs are still valid. Some could
+  -- have been deleted and we wouldn't get notified because tab_close is not
+  -- a dual-pane command. If any is invalid, choose another one.
+  _verify_update_tabs = function(self)
+    for i = 1, #self.tabs do
+      if cx.tabs[self.tabs[i]] == nil then
+        self.tabs[i] = cx.active.idx
+      end
+    end
+  end,
+
   _config_dual_pane = function(self)
     Root.layout = function(root)
       root._chunks = ui.Layout()
@@ -173,6 +184,7 @@ local DualPane = {
     end
 
     Root.build = function(root)
+      self._verify_update_tabs(self)
       root._children = {
         Panes:new(root._chunks[1], cx.tabs[self.tabs[1]], cx.tabs[self.tabs[2]]),
       }
@@ -191,6 +203,7 @@ local DualPane = {
     end
 
     Root.build = function(root)
+      self._verify_update_tabs(self)
       local tab = cx.tabs[self.tabs[self.pane]]
       root._children = {
         Pane:new(root._chunks[1], tab, self.pane),
@@ -263,6 +276,26 @@ local DualPane = {
   end,
 }
 
+local function get_copy_arguments(args)
+  local force = false
+  local follow = false
+  if args[2] then
+    if args[2] == "--force" then
+      force = true
+    elseif args[2] == "--follow" then
+      follow = true
+    end
+    if args[3] then
+      if args[3] == "--force" then
+        force = true
+      elseif args[3] == "--follow" then
+        follow = true
+      end
+    end
+  end
+  return force, follow
+end
+
 local function entry(_, args)
   local action = args[1]
   if not action then
@@ -272,49 +305,19 @@ local function entry(_, args)
   if action == "toggle" then
     DualPane:toggle()
     return
-  end
-
-  if action == "toggle_zoom" then
+  elseif action == "toggle_zoom" then
     DualPane:toggle_zoom()
     return
-  end
-
-  if action == "next_pane" then
+  elseif action == "next_pane" then
     DualPane:focus_next()
     return
-  end
-
-  local function get_copy_arguments(args)
-    local force = false
-    local follow = false
-    if args[2] then
-      if args[2] == "--force" then
-        force = true
-      elseif args[2] == "--follow" then
-        follow = true
-      end
-      if args[3] then
-        if args[3] == "--force" then
-          force = true
-        elseif args[3] == "--follow" then
-          follow = true
-        end
-      end
-    end
-    return force, follow
-  end
-
-  if action == "copy_files" then
+  elseif action == "copy_files" then
     local force, follow = get_copy_arguments(args)
     DualPane:copy_files(false, force, follow)
-  end
-
-  if action == "move_files" then
+  elseif action == "move_files" then
     local force, follow = get_copy_arguments(args)
     DualPane:copy_files(true, force, follow)
-  end
-
-  if action == "tab_switch" then
+  elseif action == "tab_switch" then
     if args[2] then
       local tab = tonumber(args[2])
       if args[3] then
@@ -329,9 +332,7 @@ local function entry(_, args)
       DualPane:tab_switch(tab + 1)
     end
     return
-  end
-
-  if action == "tab_create" then
+  elseif action == "tab_create" then
     if args[2] then
       local dir
       if args[2] == "--current" then
@@ -348,12 +349,15 @@ local function entry(_, args)
     -- ya.manager_emit() is not synchronous. So we have the "other" pane
     -- in a limbo state until we switch to it manually (ordering doesn't
     -- respect the global configuration)
+    return
   end
 end
 
 local function setup(_, opts)
-  if opts and opts.enabled then
-    DualPane:toggle()
+  if opts then
+    if opts.enabled then
+      DualPane:toggle()
+    end
   end
 end
 
