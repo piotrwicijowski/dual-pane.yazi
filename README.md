@@ -25,10 +25,13 @@ require("dual-pane"):setup()
 The plugin supports the following options, which can be assigned during setup:
 
 1. `enabled`: If true, the plugin is enabled at yazi's startup. The default value is false.
+2. `persist`: It true, you can save and load the state of tabs from one
+   session to another. The default value is false.
 
 ``` lua
 require("dual-pane"):setup({
   enabled = true,
+  persist = true,
 })
 ``````
 
@@ -41,7 +44,7 @@ Choose your own key bindings or use these in your `~/.config/yazi/keymap.toml`:
 ``` toml
 [manager]
 prepend_keymap = [
-    { on = "B", run = "plugin --sync dual-pane --args=toggle", desc = "Dual-pane: toggle" },
+    { on = [ "B", "B" ], run = "plugin --sync dual-pane --args=toggle", desc = "Dual-pane: toggle" },
     { on = "b", run = "plugin --sync dual-pane --args=toggle_zoom", desc = "Dual-pane: toggle zoom" },
     { on = "<Tab>", run = "plugin --sync dual-pane --args=next_pane",  desc = "Dual-pane: switch to the other pane" },
     { on = "[", run = "plugin --sync dual-pane --args='tab_switch -1 --relative'",  desc = "Dual-pane: switch active to previous tab" },
@@ -49,6 +52,9 @@ prepend_keymap = [
     { on = "t", run = "plugin --sync dual-pane --args='tab_create --current'",  desc = "Dual-pane: create a new tab with CWD" },
     { on = "<F5>", run = "plugin --sync dual-pane --args='copy_files --follow'",  desc = "Dual-pane: copy selected files from active to inactive pane" },
     { on = "<F6>", run = "plugin --sync dual-pane --args='move_files --follow'",  desc = "Dual-pane: move selected files from active to inactive pane" },
+    { on = [ "B", "s" ], run = "plugin --sync dual-pane --args=save_config", desc = "Dual-pane: save current configuration" },
+    { on = [ "B", "l" ], run = "plugin --sync dual-pane --args=load_config", desc = "Dual-pane: load saved configuration" },
+    { on = [ "B", "r" ], run = "plugin --sync dual-pane --args=reset_config", desc = "Dual-pane: reset saved configuration" },
 ]
 ```
 
@@ -63,17 +69,20 @@ prepend_keymap = [
 | `tab_create`           | `[path]`, `--current` or none   | Same as yazi's `tab_create`                   |
 | `copy_files`           | `--force`, `--follow`           | Arguments like yazi's `paste`. Copies the selected or hovered file(s) from the current pane to the other one    |
 | `move_files`           | `--force`, `--follow`           | Arguments like yazi's `paste`. Moves the selected or hovered file(s) from the current pane to the other one, deleting the original ones   |
+| `save_config`          |                                 | Saves the current view/tab configuration      |
+| `load_config`          |                                 | Loads the stored view/tab configuration       |
+| `reset_config`         |                                 | Resets the current view/tab configuration     |
 
 ### Tutorial
 
 This short tutorial is based on the key bindings above, but you can create
 your own.
 
-When you start yazi, you can start *dual-pane* by pressing `B`. It will create
+When you start yazi, you can start *dual-pane* by pressing `BB`. It will create
 a dual pane view with the current directory on both panes if there is only one
 tab open, or the first and second tabs if there are more than one.
 
-`B` will exit *dual-pane* again (it is a toggle), while pressing `b` will still
+`BB` will exit *dual-pane* again (it is a toggle), while pressing `b` will still
 keep you in dual pane mode, but zooming the active pane for better visibility.
 For example, you could use [toggle-view.yazi](https://github.com/dawsers/toggle-view.yazi)
 to toggle on/off the preview or parent directory if you want more details.
@@ -91,6 +100,10 @@ selected) from the active pane, to the current directory of the other pane.
 
 `<F6>` will move the selected files (or the hovered one if there are none
 selected) from the active pane, to the current directory of the other pane.
+
+When you are happy with your current tab/view configuration, if `persist` is
+enabled, you can save it to reuse in future sessions with `Bs`. `Bl` will load
+the stored configuration, and `Br` will reset it.
 
 I also use global *marks* defined in *keymap.toml* to navigate quickly to
 frequent directories, like this:

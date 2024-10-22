@@ -237,7 +237,7 @@ local DualPane = {
   end,
 
   focus_next = function(self)
-    if self.pane then
+    if self.view and  self.pane then
       self.pane = self.pane % 2 + 1
       local tab = self.tabs[self.pane]
       ya.manager_emit("tab_switch", { tab - 1 })
@@ -274,7 +274,70 @@ local DualPane = {
     end
     ya.manager_emit("tab_switch", { tab_number - 1 })
   end,
+
+  load_config = function(self, state)
+    if self.view == nil then
+      return
+    end
+    local len = #cx.tabs
+    for _, path in ipairs(state.paths) do
+      -- Create each tab
+      ya.manager_emit("tab_create", { path })
+    end
+    -- Now delete the old ones
+    for i = 1, len do
+      ya.manager_emit("tab_close", { i - 1 })
+    end
+    self.tabs = { state.tabs[1], state.tabs[2] }
+    self.pane = state.pane
+    ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 } )
+  end,
+
+  save_config = function(self, state)
+    if self.view == nil then
+      return
+    end
+    state = {}
+    state.pane = self.pane
+    state.tabs = { self.tabs[1], self.tabs[2] }
+    state.paths = {}
+    for i = 1, #cx.tabs do
+      table.insert(state.paths, tostring(cx.tabs[i].current.cwd))
+    end
+    ps.pub_to(0, "@dual-pane", state)
+  end,
+
+  reset_config = function(self, state)
+    if self.view == nil then
+      return
+    end
+    state = nil
+    ps.pub_to(0, "@dual-pane", state)
+  end
 }
+
+local function load_state(state)
+  ps.sub_remote("@dual-pane", function(body)
+    if body then
+      state.pane = 1
+      state.tabs = {}
+      state.paths = {}
+      for key, value in pairs(body) do
+        if key == "pane" then
+          state.pane = value
+        elseif key == "tabs" then
+          for _, tab in ipairs(value) do
+            table.insert(state.tabs, tab)
+          end
+        elseif key == "paths" then
+          for _, path in ipairs(value) do
+            table.insert(state.paths, path)
+          end
+        end
+      end
+    end
+  end)
+end
 
 local function get_copy_arguments(args)
   local force = false
@@ -296,7 +359,7 @@ local function get_copy_arguments(args)
   return force, follow
 end
 
-local function entry(_, args)
+local function entry(state, args)
   local action = args[1]
   if not action then
     return
@@ -350,13 +413,26 @@ local function entry(_, args)
     -- in a limbo state until we switch to it manually (ordering doesn't
     -- respect the global configuration)
     return
+  elseif action == "load_config" then
+    DualPane:load_config(state)
+    return
+  elseif action == "save_config" then
+    DualPane:save_config(state)
+    return
+  elseif action == "reset_config" then
+    DualPane:reset_config(state)
+    return
   end
 end
 
-local function setup(_, opts)
+local function setup(state, opts)
   if opts then
     if opts.enabled then
       DualPane:toggle()
+    end
+    if opts.persist then
+      -- Start listener
+      load_state(state)
     end
   end
 end
