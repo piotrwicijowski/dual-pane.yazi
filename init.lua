@@ -83,9 +83,9 @@ local DualPane = {
   _create = function(self)
     self.pane = 1
     if cx then
-      self.tabs[1] = cx.active.idx
+      self.tabs[1] = cx.tabs.idx
       if #cx.tabs > 1 then
-        self.tabs[2] = cx.tabs[cx.tabs.idx % #cx.tabs + 1].idx
+        self.tabs[2] = cx.tabs.idx % #cx.tabs + 1
       else
         self.tabs[2] = self.tabs[1]
       end
@@ -168,7 +168,7 @@ local DualPane = {
   _verify_update_tabs = function(self)
     for i = 1, #self.tabs do
       if cx.tabs[self.tabs[i]] == nil then
-        self.tabs[i] = cx.active.idx
+        self.tabs[i] = cx.tabs.idx
       end
     end
   end,
@@ -406,6 +406,13 @@ local function entry(state, args)
       ya.manager_emit("tab_create", { dir })
     else
       ya.manager_emit("tab_create", {})
+    end
+    -- The new tab is cx.tabs.idx + 1, so we need to correct the non-active
+    -- pane if its tab number is higher than the one in the non-active
+    local this = DualPane.pane
+    local other = DualPane.pane % 2 + 1
+    if DualPane.tabs[other] > DualPane.tabs[this] then
+      DualPane.tabs[other] = DualPane.tabs[other] + 1
     end
     DualPane:tab_switch(cx.tabs.idx + 1)
     -- At this point, the new tab may have not been created yet, as
