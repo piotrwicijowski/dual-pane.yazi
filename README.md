@@ -46,6 +46,15 @@ prepend_keymap = [
     { on = "<Tab>", run = "plugin --sync dual-pane --args=next_pane",  desc = "Dual-pane: switch to the other pane" },
     { on = "[", run = "plugin --sync dual-pane --args='tab_switch -1 --relative'",  desc = "Dual-pane: switch active to previous tab" },
     { on = "]", run = "plugin --sync dual-pane --args='tab_switch 1 --relative'",  desc = "Dual-pane: switch active to next tab" },
+    { on = "1", run = "plugin --sync dual-pane --args='tab_switch 0'", desc = "Switch to the first tab" },
+    { on = "2", run = "plugin --sync dual-pane --args='tab_switch 1'", desc = "Switch to the second tab" },
+    { on = "3", run = "plugin --sync dual-pane --args='tab_switch 2'", desc = "Switch to the third tab" },
+    { on = "4", run = "plugin --sync dual-pane --args='tab_switch 3'", desc = "Switch to the fourth tab" },
+    { on = "5", run = "plugin --sync dual-pane --args='tab_switch 4'", desc = "Switch to the fifth tab" },
+    { on = "6", run = "plugin --sync dual-pane --args='tab_switch 5'", desc = "Switch to the sixth tab" },
+    { on = "7", run = "plugin --sync dual-pane --args='tab_switch 6'", desc = "Switch to the seventh tab" },
+    { on = "8", run = "plugin --sync dual-pane --args='tab_switch 7'", desc = "Switch to the eighth tab" },
+    { on = "9", run = "plugin --sync dual-pane --args='tab_switch 8'", desc = "Switch to the ninth tab" },
     { on = "t", run = "plugin --sync dual-pane --args='tab_create --current'",  desc = "Dual-pane: create a new tab with CWD" },
     { on = "<F5>", run = "plugin --sync dual-pane --args='copy_files --follow'",  desc = "Dual-pane: copy selected files from active to inactive pane" },
     { on = "<F6>", run = "plugin --sync dual-pane --args='move_files --follow'",  desc = "Dual-pane: move selected files from active to inactive pane" },
@@ -90,7 +99,8 @@ to toggle on/off the preview or parent directory if you want more details.
 pane will be colored differently for better visibility.
 
 While in one of the panes, `[` and `]` will move the active tab back and
-forth. The tab indicator for each pane will mark the selected one.
+forth. The tab indicator for each pane will mark the selected one. You can
+also use numbers from `1` to `9` to move to other tabs more quickly.
 
 `t` will create a new tab with the current directory as *cwd*.
 
