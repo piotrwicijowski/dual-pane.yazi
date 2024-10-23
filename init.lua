@@ -237,7 +237,7 @@ local DualPane = {
   end,
 
   focus_next = function(self)
-    if self.view and  self.pane then
+    if self.view and self.pane then
       self.pane = self.pane % 2 + 1
       local tab = self.tabs[self.pane]
       ya.manager_emit("tab_switch", { tab - 1 })
@@ -290,7 +290,7 @@ local DualPane = {
     end
     self.tabs = { state.tabs[1], state.tabs[2] }
     self.pane = state.pane
-    ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 } )
+    ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 })
   end,
 
   save_config = function(self, state)
@@ -367,13 +367,10 @@ local function entry(state, args)
 
   if action == "toggle" then
     DualPane:toggle()
-    return
   elseif action == "toggle_zoom" then
     DualPane:toggle_zoom()
-    return
   elseif action == "next_pane" then
     DualPane:focus_next()
-    return
   elseif action == "copy_files" then
     local force, follow = get_copy_arguments(args)
     DualPane:copy_files(false, force, follow)
@@ -394,7 +391,6 @@ local function entry(state, args)
       end
       DualPane:tab_switch(tab + 1)
     end
-    return
   elseif action == "tab_create" then
     if args[2] then
       local dir
@@ -419,27 +415,22 @@ local function entry(state, args)
     -- ya.manager_emit() is not synchronous. So we have the "other" pane
     -- in a limbo state until we switch to it manually (ordering doesn't
     -- respect the global configuration)
-    return
   elseif action == "load_config" then
     DualPane:load_config(state)
-    return
   elseif action == "save_config" then
     DualPane:save_config(state)
-    return
   elseif action == "reset_config" then
     DualPane:reset_config(state)
-    return
   end
 end
 
 local function setup(state, opts)
+  -- Start listener
+  load_state(state)
+
   if opts then
     if opts.enabled then
       DualPane:toggle()
-    end
-    if opts.persist then
-      -- Start listener
-      load_state(state)
     end
   end
 end

@@ -25,13 +25,10 @@ require("dual-pane"):setup()
 The plugin supports the following options, which can be assigned during setup:
 
 1. `enabled`: If true, the plugin is enabled at yazi's startup. The default value is false.
-2. `persist`: It true, you can save and load the state of tabs from one
-   session to another. The default value is false.
 
 ``` lua
 require("dual-pane"):setup({
   enabled = true,
-  persist = true,
 })
 ``````
 
@@ -80,7 +77,9 @@ your own.
 
 When you start yazi, you can start *dual-pane* by pressing `BB`. It will create
 a dual pane view with the current directory on both panes if there is only one
-tab open, or the first and second tabs if there are more than one.
+tab open, or the first and second tabs if there are more than one. If you want
+to use *dual-pane* as your default yazi view, you can set the `enabled` option
+in `setup()` as described above.
 
 `BB` will exit *dual-pane* again (it is a toggle), while pressing `b` will still
 keep you in dual pane mode, but zooming the active pane for better visibility.
@@ -101,9 +100,9 @@ selected) from the active pane, to the current directory of the other pane.
 `<F6>` will move the selected files (or the hovered one if there are none
 selected) from the active pane, to the current directory of the other pane.
 
-When you are happy with your current tab/view configuration, if `persist` is
-enabled, you can save it to reuse in future sessions with `Bs`. `Bl` will load
-the stored configuration, and `Br` will reset it.
+When you are happy with your current tab/view configuration, you can save it
+to be reused in future sessions with `Bs`. `Bl` will load the stored
+configuration, and `Br` will reset it.
 
 I also use global *marks* defined in *keymap.toml* to navigate quickly to
 frequent directories, like this:
