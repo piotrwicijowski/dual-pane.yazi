@@ -241,6 +241,7 @@ local DualPane = {
       self.pane = self.pane % 2 + 1
       local tab = self.tabs[self.pane]
       ya.manager_emit("tab_switch", { tab - 1 })
+      ya.app_emit("resize", {})
     end
   end,
 
@@ -281,8 +282,10 @@ local DualPane = {
     end
     local len = #cx.tabs
     for _, path in ipairs(state.paths) do
-      -- Create each tab
-      ya.manager_emit("tab_create", { path })
+      ya.manager_emit("tab_create", { path.cwd })
+      if path.file ~= "" then
+        ya.manager_emit("reveal", { path.file })
+      end
     end
     -- Now delete the old ones
     for i = 1, len do
@@ -291,6 +294,7 @@ local DualPane = {
     self.tabs = { state.tabs[1], state.tabs[2] }
     self.pane = state.pane
     ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 })
+    ya.app_emit("resize", {})
   end,
 
   save_config = function(self, state)
@@ -302,7 +306,8 @@ local DualPane = {
     state.tabs = { self.tabs[1], self.tabs[2] }
     state.paths = {}
     for i = 1, #cx.tabs do
-      table.insert(state.paths, tostring(cx.tabs[i].current.cwd))
+      local folder = cx.tabs[i].current
+      table.insert(state.paths, { cwd = tostring(folder.cwd), file = tostring(folder.hovered.url) })
     end
     ps.pub_to(0, "@dual-pane", state)
   end,
