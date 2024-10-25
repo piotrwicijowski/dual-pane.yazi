@@ -449,6 +449,10 @@ local DualPane = {
     end
     self.tabs = { state.tabs[1], state.tabs[2] }
     self.pane = state.pane
+    -- Refresh other pane
+    ya.manager_emit("tab_switch", { self.tabs[self.pane %2 + 1] - 1 })
+    ya.manager_emit("refresh", {})
+
     ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 })
     ya.app_emit("resize", {})
   end,
