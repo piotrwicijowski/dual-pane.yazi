@@ -1,3 +1,155 @@
+local set_state = ya.sync(function(state, key, value)
+  state[key] = value
+end)
+
+local set_state_vector = ya.sync(function(state, key, vector)
+  state[key] = {}
+  for _, value in ipairs(vector) do
+    table.insert(state[key], value)
+  end
+end)
+
+local get_state = ya.sync(function(state, key)
+  return state[key]
+end)
+
+local get_cwd = ya.sync(function() return cx.active.current.cwd end)
+
+local function _get_command(filename)
+	local _permit = ya.hide()
+	local cwd = tostring(get_cwd())
+
+	local child, err =
+		Command("bash"):args({ "-c", "cat " .. filename .. " | fzf" }):cwd(cwd):stdin(Command.INHERIT):stdout(Command.PIPED):stderr(Command.INHERIT):spawn()
+
+	if not child then
+		return fail("Spawn `fzf` failed with error code %s. Do you have it installed?", err)
+	end
+
+	local output, err = child:wait_with_output()
+	if not output then
+		return fail("Cannot read `fzf` output, error code %s", err)
+	elseif not output.status.success and output.status.code ~= 130 then
+		return fail("`fzf` exited with error code %s", output.status.code)
+	end
+
+  _permit:drop()
+
+	local target = output.stdout:gsub("\n$", "")
+  return target
+end
+
+-- Prepare urls
+local _prepare_urls = ya.sync(function(state, macro)
+  local pane = get_state("cpane")
+  local tabs = get_state("ctabs")
+  local this = cx.tabs[tabs[pane]]
+  local other = cx.tabs[tabs[pane % 2 + 1]]
+
+  local urls = nil
+  if macro == "f" then
+    if #this.selected > 0 then
+      urls = this.selected
+    elseif this.current.hovered ~= nil then
+      urls = { this.current.hovered.url }
+    end
+  elseif macro == "d" then
+    local d1 = this.current.cwd
+    if d1 ~= nil then
+      urls = { d1 }
+    end
+  elseif macro == "c" then
+    local c1 = this.current.hovered
+    if c1 ~= nil then
+      urls = { c1.url }
+    end
+  elseif macro == "F" then
+    if #other.selected > 0 then
+      urls = other.selected
+    elseif other.current.hovered ~= nil then
+      urls = { other.current.hovered.url }
+    end
+  elseif macro == "D" then
+    local d1 = other.current.cwd
+    if d1 ~= nil then
+      urls = { d1 }
+    end
+  elseif macro == "C" then
+    local c1 = other.current.hovered
+    if c1 ~= nil then
+      urls = { c1.url }
+    end
+  end
+
+  return urls
+end)
+
+local _prepare_expansion = ya.sync(function(state, urls, modifier)
+    local names = ""
+    for _, url in pairs(urls) do
+      local name
+      if modifier == "" then
+        name = tostring(url)
+      elseif modifier == "n" then
+        name = url:name()
+      elseif modifier == "s" then
+        name = url:stem()
+      elseif modifier == "e" then
+        name = url:ext()
+      end
+      if name == nil then
+        name = ""
+      end
+      names = names .. ya.quote(name) .. " "
+    end
+    -- Remove last space
+    names = names:sub(1, -2)
+
+    return names
+  end)
+
+
+-- macros cannot be run in an already expanded string, or files containing
+-- macro triggers in their names will also be expanded. So expansion can only
+-- happen once; running through the cmd only once.
+local _expand_macros = ya.sync(function(_, cmd)
+  local expanded = ""
+  local i = 1
+  while i < #cmd do
+    local mi, mj, macro = cmd:find("%%([fFcCdD])", i)
+    if mi then
+      local urls = _prepare_urls(macro)
+      if urls ~= nil then
+        -- Add substring before match to expanded
+        expanded = expanded .. cmd:sub(i, mi - 1)
+        local modifier = cmd:sub(mj + 1, mj + 2)
+        local _, _, mod = modifier:find(":([nse])")
+        if not mod then
+          mod = ""
+          i = mi + 2
+        else
+          i = mi + 4
+        end
+        expanded = expanded .. _prepare_expansion(urls, mod)
+      else
+        -- Invalid urls, for example %c in an empty directory
+        ya.notify({
+          title = "dual-pane",
+          content = string.format("Invalid macro expansion '%s'", "%" .. macro),
+          timeout = 3,
+          level = "error"
+        })
+        return ""
+      end
+    else
+      expanded = expanded .. cmd:sub(i, -1)
+      i = #cmd
+    end
+  end
+
+  return expanded
+end)
+
 local Pane = {
   _id = "pane",
 }
@@ -281,6 +433,10 @@ local DualPane = {
       return
     end
     local len = #cx.tabs
+    -- First switch to the last tab, as new ones will be inserted after the
+    -- active one
+    ya.manager_emit("tab_switch", { len - 1 })
+    -- Add stored tabs
     for _, path in ipairs(state.paths) do
       ya.manager_emit("tab_create", { path.cwd })
       if path.file ~= "" then
@@ -289,7 +445,7 @@ local DualPane = {
     end
     -- Now delete the old ones
     for i = 1, len do
-      ya.manager_emit("tab_close", { i - 1 })
+      ya.manager_emit("tab_close", { 0 })
     end
     self.tabs = { state.tabs[1], state.tabs[2] }
     self.pane = state.pane
@@ -307,7 +463,13 @@ local DualPane = {
     state.paths = {}
     for i = 1, #cx.tabs do
       local folder = cx.tabs[i].current
-      table.insert(state.paths, { cwd = tostring(folder.cwd), file = tostring(folder.hovered.url) })
+      local file
+      if folder.hovered then
+        file = tostring(folder.hovered.url)
+      else
+        file = ""
+      end
+      table.insert(state.paths, { cwd = tostring(folder.cwd), file = file })
     end
     ps.pub_to(0, "@dual-pane", state)
   end,
@@ -318,6 +480,13 @@ local DualPane = {
     end
     state = nil
     ps.pub_to(0, "@dual-pane", state)
+  end,
+
+  shell = function(self, state, cmd, blocking)
+    local expanded = _expand_macros(cmd)
+    if expanded ~= "" then
+      ya.manager_emit("shell", { block = blocking, orphan = true, confirm = true, expanded } )
+    end
   end
 }
 
@@ -427,6 +596,101 @@ local function entry(state, args)
   elseif action == "reset_config" then
     DualPane:reset_config(state)
   end
+
+  -- Always store the current state of pane and tabs so the async context
+  -- for 'shell' commands has acess to it
+  -- `shell` commands need to be in async mode. ya.input() doesn't work in
+  -- sync mode either (runs asynchronously for realtime events)
+  if DualPane.pane then
+    set_state("cpane", DualPane.pane)
+  end
+
+  if #DualPane.tabs > 0 then
+    set_state_vector("ctabs", DualPane.tabs)
+  end
+
+  if action == "shell" then
+    local cmd = ""
+    local block = false
+    local interactive = false
+    for i = 2, #args do
+      if args[i] == "--block" then
+        block = true
+      elseif args[i] == "--interactive" then
+        interactive = true
+      else
+        -- if arg[i] has spaces, quote it
+        if args[i]:find("%s") then
+          cmd = cmd .. ya.quote(args[i]) .. " "
+        else
+          cmd = cmd .. args[i] .. " "
+        end
+      end
+    end
+    if interactive then
+      local cmd, event = ya.input({
+        title = "Shell command:",
+        value = cmd,
+        position = { "top-center", y = 3, w = 40 },
+      })
+      if event == 1 then
+        DualPane:shell(state, cmd, block)
+      end
+    else
+      if cmd ~= "" then
+        DualPane:shell(state, cmd, block)
+      end
+    end
+  elseif action == "shell_fzf" then
+    local interactive = false
+    local filename
+    for i = 2, #args do
+      if args[i] == "--interactive" then
+        interactive = true
+      else
+        filename = args[i]
+      end
+    end
+    if filename then
+      local file = io.open(filename, "r")
+      if not file then
+        ya.notify({
+          title = "dual-pane",
+          content = string.format("Cannot open shell_fzf file '%s'", filename),
+          timeout = 3,
+          level = "error"
+        })
+      else
+        io.close(file)
+        -- run `cat filename | fzf` and return choice
+        local cmd = _get_command(filename)
+        if cmd ~= "" then
+          -- Parse command
+          local _, _, run, desc, block = cmd:find("run%s*=%s*\"(.-)\"%s*,%s*desc%s*=%s*\"(.-)\"%s*,%s*block%s*=%s*([^%s\n]+)")
+          if run and run ~= "" and block and (block == "true" or block == "false") then
+            if block == "true" then
+              block = true
+            else
+              block = false
+            end
+            if interactive then
+              -- Feed run into input prompt
+              local cmd, event = ya.input({
+                title = "Shell command:",
+                value = run,
+                position = { "top-center", y = 3, w = 40 },
+              })
+              if event == 1 then
+                DualPane:shell(state, cmd, block)
+              end
+            else
+              DualPane:shell(state, run, block)
+            end
+          end
+        end
+      end
+    end
+  end
 end
 
 local function setup(state, opts)
@@ -435,7 +699,7 @@ local function setup(state, opts)
 
   if opts then
     if opts.enabled then
-      DualPane:toggle()
+      entry(state, { "toggle" })
     end
   end
 end
