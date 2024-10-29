@@ -115,7 +115,7 @@ local _prepare_expansion = ya.sync(function(state, urls, modifier)
 local _expand_macros = ya.sync(function(_, cmd)
   local expanded = ""
   local i = 1
-  while i < #cmd do
+  while i <= #cmd do
     local mi, mj, macro = cmd:find("%%([fFcCdD])", i)
     if mi then
       local urls = _prepare_urls(macro)
@@ -143,7 +143,7 @@ local _expand_macros = ya.sync(function(_, cmd)
       end
     else
       expanded = expanded .. cmd:sub(i, -1)
-      i = #cmd
+      break
     end
   end
 
