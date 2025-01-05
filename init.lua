@@ -1,3 +1,4 @@
+--- @sync entry
 local set_state = ya.sync(function(state, key, value)
   state[key] = value
 end)
@@ -13,29 +14,36 @@ local get_state = ya.sync(function(state, key)
   return state[key]
 end)
 
-local get_cwd = ya.sync(function() return cx.active.current.cwd end)
+local get_cwd = ya.sync(function()
+  return cx.active.current.cwd
+end)
 
 local function _get_command(filename)
-	local _permit = ya.hide()
-	local cwd = tostring(get_cwd())
+  local _permit = ya.hide()
+  local cwd = tostring(get_cwd())
 
-	local child, err =
-		Command("bash"):args({ "-c", "cat " .. filename .. " | fzf" }):cwd(cwd):stdin(Command.INHERIT):stdout(Command.PIPED):stderr(Command.INHERIT):spawn()
+  local child, err = Command("bash")
+    :args({ "-c", "cat " .. filename .. " | fzf" })
+    :cwd(cwd)
+    :stdin(Command.INHERIT)
+    :stdout(Command.PIPED)
+    :stderr(Command.INHERIT)
+    :spawn()
 
-	if not child then
-		return fail("Spawn `fzf` failed with error code %s. Do you have it installed?", err)
-	end
+  if not child then
+    return fail("Spawn `fzf` failed with error code %s. Do you have it installed?", err)
+  end
 
-	local output, err = child:wait_with_output()
-	if not output then
-		return fail("Cannot read `fzf` output, error code %s", err)
-	elseif not output.status.success and output.status.code ~= 130 then
-		return fail("`fzf` exited with error code %s", output.status.code)
-	end
+  local output, err = child:wait_with_output()
+  if not output then
+    return fail("Cannot read `fzf` output, error code %s", err)
+  elseif not output.status.success and output.status.code ~= 130 then
+    return fail("`fzf` exited with error code %s", output.status.code)
+  end
 
   _permit:drop()
 
-	local target = output.stdout:gsub("\n$", "")
+  local target = output.stdout:gsub("\n$", "")
   return target
 end
 
@@ -85,29 +93,28 @@ local _prepare_urls = ya.sync(function(state, macro)
 end)
 
 local _prepare_expansion = ya.sync(function(state, urls, modifier)
-    local names = ""
-    for _, url in pairs(urls) do
-      local name
-      if modifier == "" then
-        name = tostring(url)
-      elseif modifier == "n" then
-        name = url:name()
-      elseif modifier == "s" then
-        name = url:stem()
-      elseif modifier == "e" then
-        name = url:ext()
-      end
-      if name == nil then
-        name = ""
-      end
-      names = names .. ya.quote(name) .. " "
+  local names = ""
+  for _, url in pairs(urls) do
+    local name
+    if modifier == "" then
+      name = tostring(url)
+    elseif modifier == "n" then
+      name = url:name()
+    elseif modifier == "s" then
+      name = url:stem()
+    elseif modifier == "e" then
+      name = url:ext()
     end
-    -- Remove last space
-    names = names:sub(1, -2)
+    if name == nil then
+      name = ""
+    end
+    names = names .. ya.quote(name) .. " "
+  end
+  -- Remove last space
+  names = names:sub(1, -2)
 
-    return names
-  end)
-
+  return names
+end)
 
 -- macros cannot be run in an already expanded string, or files containing
 -- macro triggers in their names will also be expanded. So expansion can only
@@ -137,7 +144,7 @@ local _expand_macros = ya.sync(function(_, cmd)
           title = "dual-pane",
           content = string.format("Invalid macro expansion '%s'", "%" .. macro),
           timeout = 3,
-          level = "error"
+          level = "error",
         })
         return ""
       end
@@ -183,7 +190,7 @@ end
 setmetatable(Pane, { __index = Root })
 
 local Panes = {
-  _id = "panes"
+  _id = "panes",
 }
 
 function Panes:new(area, tab_left, tab_right)
@@ -269,7 +276,7 @@ local DualPane = {
     Header.tabs = function(header)
       local tabs = #cx.tabs
       if tabs == 1 then
-        return ui.Line {}
+        return ui.Line({})
       end
 
       local active = self.tabs[header.pane]
@@ -450,7 +457,7 @@ local DualPane = {
     self.tabs = { state.tabs[1], state.tabs[2] }
     self.pane = state.pane
     -- Refresh other pane
-    ya.manager_emit("tab_switch", { self.tabs[self.pane %2 + 1] - 1 })
+    ya.manager_emit("tab_switch", { self.tabs[self.pane % 2 + 1] - 1 })
     ya.manager_emit("refresh", {})
 
     ya.manager_emit("tab_switch", { self.tabs[self.pane] - 1 })
@@ -489,9 +496,9 @@ local DualPane = {
   shell = function(self, state, cmd, blocking)
     local expanded = _expand_macros(cmd)
     if expanded ~= "" then
-      ya.manager_emit("shell", { block = blocking, orphan = true, confirm = true, expanded } )
+      ya.manager_emit("shell", { block = blocking, orphan = true, confirm = true, expanded })
     end
-  end
+  end,
 }
 
 local function load_state(state)
@@ -537,8 +544,8 @@ local function get_copy_arguments(args)
   return force, follow
 end
 
-local function entry(state, args)
-  local action = args[1]
+local function entry(state, job)
+  local action = job.args[1]
   if not action then
     return
   end
@@ -550,16 +557,16 @@ local function entry(state, args)
   elseif action == "next_pane" then
     DualPane:focus_next()
   elseif action == "copy_files" then
-    local force, follow = get_copy_arguments(args)
+    local force, follow = get_copy_arguments(job.args)
     DualPane:copy_files(false, force, follow)
   elseif action == "move_files" then
-    local force, follow = get_copy_arguments(args)
+    local force, follow = get_copy_arguments(job.args)
     DualPane:copy_files(true, force, follow)
   elseif action == "tab_switch" then
-    if args[2] then
-      local tab = tonumber(args[2])
-      if args[3] then
-        if args[3] == "--relative" then
+    if job.args[2] then
+      local tab = tonumber(job.args[2])
+      if job.args[3] then
+        if job.args[3] == "--relative" then
           if DualPane.pane then
             tab = (DualPane.tabs[DualPane.pane] - 1 + tab) % #cx.tabs
           else
@@ -570,12 +577,12 @@ local function entry(state, args)
       DualPane:tab_switch(tab + 1)
     end
   elseif action == "tab_create" then
-    if args[2] then
+    if job.args[2] then
       local dir
-      if args[2] == "--current" then
+      if job.args[2] == "--current" then
         dir = cx.active.current.cwd
       else
-        dir = args[2]
+        dir = job.args[2]
       end
       ya.manager_emit("tab_create", { dir })
     else
@@ -589,10 +596,10 @@ local function entry(state, args)
       DualPane.tabs[other] = DualPane.tabs[other] + 1
     end
     DualPane:tab_switch(cx.tabs.idx + 1)
-    -- At this point, the new tab may have not been created yet, as
-    -- ya.manager_emit() is not synchronous. So we have the "other" pane
-    -- in a limbo state until we switch to it manually (ordering doesn't
-    -- respect the global configuration)
+  -- At this point, the new tab may have not been created yet, as
+  -- ya.manager_emit() is not synchronous. So we have the "other" pane
+  -- in a limbo state until we switch to it manually (ordering doesn't
+  -- respect the global configuration)
   elseif action == "load_config" then
     DualPane:load_config(state)
   elseif action == "save_config" then
@@ -617,17 +624,17 @@ local function entry(state, args)
     local cmd = ""
     local block = false
     local interactive = false
-    for i = 2, #args do
-      if args[i] == "--block" then
+    for i = 2, #job.args do
+      if job.args[i] == "--block" then
         block = true
-      elseif args[i] == "--interactive" then
+      elseif job.args[i] == "--interactive" then
         interactive = true
       else
         -- if arg[i] has spaces, quote it
-        if args[i]:find("%s") then
-          cmd = cmd .. ya.quote(args[i]) .. " "
+        if job.args[i]:find("%s") then
+          cmd = cmd .. ya.quote(job.args[i]) .. " "
         else
-          cmd = cmd .. args[i] .. " "
+          cmd = cmd .. job.args[i] .. " "
         end
       end
     end
@@ -648,11 +655,11 @@ local function entry(state, args)
   elseif action == "shell_fzf" then
     local interactive = false
     local filename
-    for i = 2, #args do
-      if args[i] == "--interactive" then
+    for i = 2, #job.args do
+      if job.args[i] == "--interactive" then
         interactive = true
       else
-        filename = args[i]
+        filename = job.args[i]
       end
     end
     if filename then
@@ -662,7 +669,7 @@ local function entry(state, args)
           title = "dual-pane",
           content = string.format("Cannot open shell_fzf file '%s'", filename),
           timeout = 3,
-          level = "error"
+          level = "error",
         })
       else
         io.close(file)
@@ -670,7 +677,8 @@ local function entry(state, args)
         local cmd = _get_command(filename)
         if cmd ~= "" then
           -- Parse command
-          local _, _, run, desc, block = cmd:find("run%s*=%s*\"(.-)\"%s*,%s*desc%s*=%s*\"(.-)\"%s*,%s*block%s*=%s*([^%s\n]+)")
+          local _, _, run, desc, block =
+            cmd:find('run%s*=%s*"(.-)"%s*,%s*desc%s*=%s*"(.-)"%s*,%s*block%s*=%s*([^%s\n]+)')
           if run and run ~= "" and block and (block == "true" or block == "false") then
             if block == "true" then
               block = true
@@ -708,6 +716,7 @@ local function setup(state, opts)
   end
 end
 
+--- @sync entry
 return {
   entry = entry,
   setup = setup,
